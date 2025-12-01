@@ -7,7 +7,6 @@ class TableDefinition:
 
     def create_triggers(self):
         try:
-            # --- Module Role Checks ---
             self.cursor.execute("DROP PROCEDURE IF EXISTS check_module_roles;")
             proc_module_sql = """
             CREATE PROCEDURE check_module_roles(IN welfare_staff_id VARCHAR(8), IN module_staff_id VARCHAR(8))
@@ -50,7 +49,6 @@ class TableDefinition:
             """
             self.cursor.execute(trig_module_update)
 
-            # --- Student Role Checks ---
             self.cursor.execute("DROP PROCEDURE IF EXISTS check_student_role;")
             proc_student_sql = """
             CREATE PROCEDURE check_student_role(IN stud_id VARCHAR(8))
@@ -87,7 +85,6 @@ class TableDefinition:
             """
             self.cursor.execute(trig_student_update)
 
-            # --- Attendance Role Checks ---
             self.cursor.execute("DROP TRIGGER IF EXISTS attendance_insert_trigger;")
             trig_att_insert = """
             CREATE TRIGGER attendance_insert_trigger
@@ -133,7 +130,6 @@ class TableDefinition:
             """
             self.cursor.execute(trig_surv_update)
 
-            # --- Module Grades Role Checks ---
             self.cursor.execute("DROP TRIGGER IF EXISTS grades_insert_trigger;")
             trig_grades_insert = """
             CREATE TRIGGER grades_insert_trigger
@@ -156,7 +152,6 @@ class TableDefinition:
             """
             self.cursor.execute(trig_grades_update)
 
-            # --- Deadlines Role Checks ---
             self.cursor.execute("DROP TRIGGER IF EXISTS deadlines_insert_trigger;")
             trig_dead_insert = """
             CREATE TRIGGER deadlines_insert_trigger

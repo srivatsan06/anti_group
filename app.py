@@ -363,7 +363,7 @@ def admin_dashboard():
     
     st.title("System Administration")
     
-    tab1, tab2 = st.tabs(["User Management", "System Overview"])
+    tab1, tab2, tab3 = st.tabs(["User Management","Course Management", "System Overview"])
     
     with tab1:
         st.subheader("Register New User")
@@ -401,17 +401,121 @@ def admin_dashboard():
                 except Exception as e:
                     st.error(f"Error: {e}")
             
+        st.divider()
+        
+        del_uid = st.text_input("Delete User ID")
+        if st.button("Delete User"):
+            try:
+                controller.delete_user(del_uid)
+                st.success(f"User {del_uid} deleted.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    with tab2:
+        st.subheader("Course & Module Management")
+        
+        courses_with_modules = controller.get_courses_with_modules()
+        if courses_with_modules:
+            df = pd.DataFrame(courses_with_modules)
+            st.dataframe(df[['course_id', 'course_name', 'mod_id', 'mod_name']])
+        else:
+            st.info("No courses found.")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
             st.divider()
-            del_uid = st.text_input("Delete User ID")
-            if st.button("Delete User"):
+            st.subheader("Add New Course")
+            new_course_id = st.text_input("Course ID", key="new_course_id")
+            new_course_name = st.text_input("Course Name", key="new_course_name")
+            
+            if st.button("Add Course"):
                 try:
-                    controller.delete_user(del_uid)
-                    st.success(f"User {del_uid} deleted.")
+                    controller.create_course(new_course_id, new_course_name)
+                    st.success(f"Course {new_course_id} added!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Update Course")
+            upd_course_id = st.text_input("Course ID to Update", key="upd_course_id")
+            upd_course_name = st.text_input("New Course Name", key="upd_course_name")
+            
+            if st.button("Update Course"):
+                try:
+                    controller.update_course(upd_course_id, upd_course_name)
+                    st.success(f"Course {upd_course_id} updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Delete Course")
+            del_course_id = st.text_input("Course ID to Delete", key="del_course_id")
+            
+            if st.button("Delete Course"):
+                try:
+                    controller.delete_course(del_course_id)
+                    st.success(f"Course {del_course_id} deleted!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        
+        with col2:
+            st.divider()
+            st.subheader("Add New Module")
+            from models.user import UserModel
+            from utils.db_connection import get_connection
+            conn, cursor = get_connection()
+            user_model = UserModel(conn, cursor)
+            
+            welfare_staff = user_model.find_by_role('welfare_staff')
+            module_staff = user_model.find_by_role('module_staff')
+            all_courses = controller.get_all_courses()
+            
+            new_mod_id = st.text_input("Module ID", key="new_mod_id")
+            new_mod_name = st.text_input("Module Name", key="new_mod_name")
+            new_mod_course = st.selectbox("Course", [c[0] for c in all_courses] if all_courses else [], format_func=lambda x: f"{x} - {[c[1] for c in all_courses if c[0] == x][0]}", key="new_mod_course")
+            new_mod_welfare = st.selectbox("Welfare Staff", [w[0] for w in welfare_staff] if welfare_staff else [], format_func=lambda x: f"{x} - {[w[1] for w in welfare_staff if w[0] == x][0]}", key="new_mod_welfare")
+            new_mod_module_staff = st.selectbox("Module Staff", [m[0] for m in module_staff] if module_staff else [], format_func=lambda x: f"{x} - {[m[1] for m in module_staff if m[0] == x][0]}", key="new_mod_module_staff")
+            
+            if st.button("Add Module"):
+                try:
+                    controller.create_module(new_mod_id, new_mod_name, new_mod_course, new_mod_welfare, new_mod_module_staff)
+                    st.success(f"Module {new_mod_id} added!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Update Module")
+            upd_mod_id = st.text_input("Module ID to Update", key="upd_mod_id")
+            upd_mod_field = st.selectbox("Field to Update", ["mod_name"], key="upd_mod_field")
+            upd_mod_value = st.text_input("New Value", key="upd_mod_value")
+            
+            if st.button("Update Module"):
+                try:
+                    controller.update_module(upd_mod_id, upd_mod_field, upd_mod_value)
+                    st.success(f"Module {upd_mod_id} updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Delete Module")
+            del_mod_id = st.text_input("Module ID to Delete", key="del_mod_id")
+            
+            if st.button("Delete Module"):
+                try:
+                    controller.delete_module(del_mod_id)
+                    st.success(f"Module {del_mod_id} deleted!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    with tab2:
+    with tab3:
         st.subheader("System Stats")
         st.metric("Total Users", len(users) if users else 0)
 
