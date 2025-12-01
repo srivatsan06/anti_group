@@ -73,7 +73,7 @@ def student_dashboard():
 
     controller = StudentController(st.session_state.user_id, 'student')
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Profile", "My Modules", "Attendance", "Grades", "Deadlines"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([" Profile", "My Modules", "Attendance", "Grades", "Deadlines", "Surveys"])
     
     with tab1:
         st.header("My Profile")
@@ -121,8 +121,7 @@ def student_dashboard():
         st.header("Upcoming Deadlines")
         deadlines = controller.get_my_deadlines()
         if deadlines:
-            # Filter for upcoming
-            upcoming = [d for d in deadlines if d[5] == 0] # submitted = 0
+            upcoming = [d for d in deadlines if d[5] == 0]
             if upcoming:
                 df = pd.DataFrame(upcoming, columns=['Stud ID', 'Mod ID', 'Week', 'Assignment', 'Due Date', 'Submitted'])
                 st.dataframe(df[['Mod ID', 'Assignment', 'Due Date', 'Week']])
@@ -130,6 +129,38 @@ def student_dashboard():
                 st.success("No pending deadlines!")
         else:
             st.info("No deadlines found.")
+    
+    with tab6:
+        st.header("Wellbeing Surveys")
+        
+        st.subheader("Submit Survey")
+        modules = controller.get_my_modules()
+        if modules:
+            with st.form("survey_form"):
+                survey_mod = st.selectbox("Module", [m[0] for m in modules], format_func=lambda x: f"{x} - {[m[1] for m in modules if m[0] == x][0]}")
+                week_no = st.number_input("Week Number", min_value=1, max_value=12, value=1)
+                stress = st.slider("Stress Level (1-5)", 1, 5, 3)
+                sleep = st.number_input("Hours Slept", min_value=0.0, max_value=24.0, value=7.0, step=0.5)
+                comments = st.text_area("Comments (optional)")
+                
+                if st.form_submit_button("Submit Survey"):
+                    try:
+                        controller.submit_survey(survey_mod, stress, sleep, week_no, comments if comments else 'NO COMMENTS')
+                        st.success("Survey submitted successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        else:
+            st.warning("No modules found. Please enroll in a module first.")
+        
+        st.divider()
+        st.subheader("My Survey History")
+        surveys = controller.get_my_surveys()
+        if surveys:
+            survey_df = pd.DataFrame(surveys, columns=['Week', 'Student', 'Module', 'Stress', 'Sleep', 'Comments', 'Date'])
+            st.dataframe(survey_df[['Week', 'Module', 'Stress', 'Sleep', 'Date', 'Comments']])
+        else:
+            st.info("No surveys submitted yet.")
 
 def module_staff_dashboard():
     st.sidebar.title(f"Staff: {st.session_state.user_name}")
