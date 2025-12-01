@@ -1,0 +1,56 @@
+done course table:
+cursor.execute("CREATE TABLE course(`course_id` varchar(6) PRIMARY KEY, `course_name` varchar(50));")
++-----------+-------------+--------+---------+-------------+
+Table: course
++-------------+---------------+
+| course_id   | course_name   |
++=============+===============+
++-------------+---------------+
+
+done student table(referencing course table by course id) :
+cursor.execute("CREATE TABLE student (`stud_id` varchar(8) PRIMARY KEY, `stud_name` TEXT, `year` INT, `email` varchar(30), `course` TEXT );")
+Table: student
++-----------+-------------+--------+---------+-------------+-------------+
+| stud_id   | stud_name   | year   | email   | course_id   | hash_pass   |
++===========+=============+========+=========+=============+=============+
++-----------+-------------+--------+---------+-------------+-------------+
+
+done users table (with role column being either module_staff or welfare_staff but not null):
+cursor.execute("CREATE table users(`user_id` varchar(8) PRIMARY KEY, `role` ENUM ('module_staff','welfare_staff','admin') NOT NULL, `email` varchar(30) , `hash_pass` varchar(255) NOT NULL);")
+Table: users
++-----------+-------------+--------+---------+-------------+
+| user_id   | user_name   | role   | email   | hash_pass   |
++===========+=============+========+=========+=============+
++-----------+-------------+--------+---------+-------------+
+
+done module table (referencing users table by  welfare_staff_id and module_staff_id by having procedures and triggers which works looking at the roles of the respective user_id in the users table):
+cursor.execute("CREATE TABLE module (`mod_id` varchar(8) PRIMARY KEY, `mod_name` TEXT, `course_id` varchar(6), `year` INT, `welfare_staff_id` varchar(8), `module_staff_id` varchar(8) , FOREIGN KEY (welfare_staff_id) REFERENCES users(user_id) ,FOREIGN KEY (module_staff_id) REFERENCES users(user_id) ,FOREIGN KEY (course_id) REFERENCES course(course_id));")
+Table: module
++----------+------------+-------------+--------+--------------------+-------------------+
+| mod_id   | mod_name   | course_id   | year   | welfare_staff_id   | module_staff_id   |
++==========+============+=============+========+====================+===================+
++----------+------------+-------------+--------+--------------------+-------------------+
+
+done attendance table(referencing student by student id, and module by module id and having unique student attendance per module per week):
+cursor.execute("CREATE TABLE attendance (`week_no` INT, `mod_id` varchar(8), `stud_id` varchar(8) , `att_per` DECIMAL(4,2) , UNIQUE KEY unique_stu_att_per_week(week_no, mod_id, stud_id), FOREIGN KEY (stud_id) REFERENCES student(stud_id) , FOREIGN KEY (mod_id) REFERENCES module(mod_id));")
+Table: attendance
++-----------+----------+-----------+-----------+
+| week_no   | mod_id   | stud_id   | att_per   |
++===========+==========+===========+===========+
++-----------+----------+-----------+-----------+
+
+done surveys table(referencing student table by student id and module table by module id , having unique student surveys per week per module (unique_stu_per_week)):
+cursor.execute("CREATE TABLE surveys ( `week_no` INT, `stud_id` varchar(8), `mod_id` varchar(8), `stress_levels` INT CHECK(`stress_levels` > 0 AND `stress_levels` <=5), `hours_slept` FLOAT CHECK(`hours_slept` < 24), `comments` varchar(200) DEFAULT 'NO COMMENTS', UNIQUE KEY unique_stu_per_week (week_no, stud_id, mod_id), FOREIGN KEY (stud_id) REFERENCES student(stud_id), FOREIGN KEY (mod_id) REFERENCES module(mod_id));")
+Table: surveys
++-----------+-----------+----------+-----------------+---------------+------------+
+| week_no   | stud_id   | mod_id   | stress_levels   | hours_slept   | comments   |
++===========+===========+==========+=================+===============+============+
++-----------+-----------+----------+-----------------+---------------+------------+
+
+done deadlines table(referencing module table by module id):
+cursor.execute("CREATE TABLE deadlines (`dead_id` INT PRIMARY KEY, `mod_id` varchar(8) , `week_no` INT, `ass_name` varchar(100) DEFAULT 'Assessment', `due_date` DATE, FOREIGN KEY (mod_id) REFERENCES module(mod_id));")
+Table: deadlines
++-----------+----------+-----------+------------+------------+
+| dead_id   | mod_id   | week_no   | ass_name   | due_date   |
++===========+==========+===========+============+============+
++-----------+----------+-----------+------------+------------+
