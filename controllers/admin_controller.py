@@ -44,7 +44,7 @@ class AdminController:
         # Hash password
         hash_pass = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         
-        return self.user_model.create(user_id, user_name, role, email, hash_pass)
+        return self.user_model.create(user_id, user_name, role, hash_pass, email)
 
     def get_all_users(self):
         """View all users."""
