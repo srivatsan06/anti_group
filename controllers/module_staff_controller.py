@@ -180,3 +180,38 @@ class ModuleStaffController:
             self.deadline_model.delete(stud_id, mod_id, ass_name, due_date)
             count += 1
         return count
+
+    # --- Individual Student Analytics ---
+
+    def get_student_grades_in_module(self, mod_id, stud_id):
+        """Get grade for a specific student in this module."""
+        self._check_module_access(mod_id)
+        
+        query = """
+            SELECT g.stud_id, u.user_name, g.grade
+            FROM module_grades g
+            JOIN users u ON g.stud_id = u.user_id
+            WHERE g.mod_id = %s AND g.stud_id = %s
+        """
+        return self.grade_model.execute_query(query, (mod_id, stud_id))
+
+    def get_student_attendance_in_module(self, mod_id, stud_id, week_no=None):
+        """Get attendance for a specific student in this module, optionally filtered by week."""
+        self._check_module_access(mod_id)
+        
+        if week_no:
+            query = """
+                SELECT a.week_no, a.date, a.missed
+                FROM attendance a
+                WHERE a.mod_id = %s AND a.stud_id = %s AND a.week_no = %s
+                ORDER BY a.week_no, a.date
+            """
+            return self.attendance_model.execute_query(query, (mod_id, stud_id, week_no))
+        else:
+            query = """
+                SELECT a.week_no, a.date, a.missed
+                FROM attendance a
+                WHERE a.mod_id = %s AND a.stud_id = %s
+                ORDER BY a.week_no, a.date
+            """
+            return self.attendance_model.execute_query(query, (mod_id, stud_id))

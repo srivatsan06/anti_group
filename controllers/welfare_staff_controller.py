@@ -128,3 +128,38 @@ class WelfareStaffController:
             'weekly_attendance': weekly_att,
             'chart_path': trend_chart
         }
+
+    # --- Module Analytics (Similar to Module Staff) ---
+
+    def get_module_analytics(self, mod_id):
+        """Get analytics for a specific module."""
+        self._check_role()
+        
+        avg_attendance = self.analytics_service.get_module_attendance_avg(mod_id)
+        avg_grade = self.analytics_service.get_module_grade_avg(mod_id)
+        
+        # Generate PNG Chart
+        chart_path = self.analytics_service.generate_bar_chart_png(
+            f"Module Analytics: {mod_id}",
+            ['Attendance', 'Avg Grade'],
+            [avg_attendance, avg_grade],
+            f"welfare_module_{mod_id}_analytics.png"
+        )
+        
+        return {
+            'module_id': mod_id,
+            'avg_attendance': avg_attendance,
+            'avg_grade': avg_grade,
+            'chart_path': chart_path
+        }
+
+    def get_survey_details(self, stud_id=None):
+        """Get detailed survey information, optionally for a specific student."""
+        self._check_role()
+        
+        if stud_id:
+            # Surveys for specific student
+            return self.survey_model.find_by_student(stud_id)
+        else:
+            # All surveys
+            return self.survey_model.find_all()
