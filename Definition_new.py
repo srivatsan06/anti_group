@@ -107,7 +107,6 @@ class TableDefinition:
             """
             self.cursor.execute(trig_att_update)
 
-            # --- Surveys Role Checks ---
             self.cursor.execute("DROP TRIGGER IF EXISTS surveys_insert_trigger;")
             trig_surv_insert = """
             CREATE TRIGGER surveys_insert_trigger
