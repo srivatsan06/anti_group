@@ -33,16 +33,7 @@ def login():
         if st.button("Login"):
             auth = AuthController()
             if auth.login(user_id, password):
-                # Get user details to store in session
-                # We need a way to get role/name after login if auth.login only returns True
-                # AuthController.login returns True/False. 
-                # We should probably update AuthController to return user info or fetch it here.
-                # For now, let's fetch it using a direct model call or update AuthController.
-                # Actually, AuthController verifies password. We can fetch user details from UserModel.
-                
-                # Re-instantiate to get user details (or use a helper)
-                # Let's just use the user_id provided since login succeeded
-                # We need the role.
+
                 from models.user import UserModel
                 from utils.db_connection import get_connection
                 conn, cursor = get_connection()
@@ -63,7 +54,6 @@ def logout():
     st.session_state.role = None
     st.rerun()
 
-# --- Dashboards ---
 
 def student_dashboard():
     st.sidebar.title(f"Welcome, {st.session_state.user_name}")
@@ -169,7 +159,6 @@ def module_staff_dashboard():
 
     controller = ModuleStaffController(st.session_state.user_id, 'module_staff')
     
-    # Sidebar Module Selection
     my_modules = controller.get_my_modules()
     if not my_modules:
         st.warning("No modules assigned.")
@@ -186,7 +175,6 @@ def module_staff_dashboard():
         st.subheader("Enrolled Students")
         students = controller.get_module_students(selected_mod_id)
         if students:
-            # students list of tuples: (stud_id, name, email, year, course)
             df = pd.DataFrame(students, columns=['ID', 'Name', 'Email', 'Year', 'Course'])
             st.dataframe(df)
         else:
@@ -221,7 +209,6 @@ def module_staff_dashboard():
             
         if st.button("Submit Grade"):
             try:
-                # Try update first, then add
                 try:
                     controller.update_grade(stud_id_grade, selected_mod_id, grade_val)
                     st.success("Grade updated!")
@@ -252,7 +239,6 @@ def module_staff_dashboard():
             if selected_student:
                 st.write(f"### {selected_student}")
                 
-                # Grade
                 st.write("**Grade:**")
                 grade_result = controller.get_student_grades_in_module(selected_mod_id, selected_student)
                 if grade_result:
@@ -260,7 +246,6 @@ def module_staff_dashboard():
                 else:
                     st.info("No grade recorded yet.")
                 
-                # Attendance
                 st.write("**Attendance:**")
                 week_filter = st.selectbox("Filter by Week (0 = All)", [0] + list(range(1, 13)))
                 
@@ -317,8 +302,7 @@ def welfare_staff_dashboard():
                 st.subheader("Survey History")
                 surveys = controller.get_student_surveys(stud_id_search)
                 if surveys:
-                    # surveys: (week, stud, mod, stress, sleep, comment, date)
-                    # Create clean dataframe
+
                     survey_data = []
                     for surv in surveys:
                         survey_data.append({
@@ -356,18 +340,15 @@ def welfare_staff_dashboard():
     with tab4:
         st.subheader("Survey Analytics")
         
-        # Overall stats
         analytics = controller.get_survey_analytics()
         c1, c2 = st.columns(2)
         c1.metric("Avg Stress Level", analytics['average_stress'])
         c2.metric("Avg Sleep Hours", analytics['average_sleep'])
         
-        # Detailed surveys
         st.divider()
         st.write("**All Survey Responses:**")
         all_surveys = controller.get_survey_details()
         if all_surveys:
-            # (week, stud, mod, stress, sleep, comment, date)
             survey_df = pd.DataFrame(all_surveys, columns=['Week', 'Student', 'Module', 'Stress', 'Sleep', 'Comment', 'Date'])
             st.dataframe(survey_df)
         else:
@@ -407,7 +388,6 @@ def admin_dashboard():
             df = pd.DataFrame(users, columns=['User ID', 'Name', 'Role', 'Email', 'Password Hash'])
             st.dataframe(df[['User ID', 'Name', 'Role', 'Email']])
             
-            # Update User
             st.divider()
             st.subheader("Update User")
             update_uid = st.text_input("User ID to Update")
@@ -421,7 +401,6 @@ def admin_dashboard():
                 except Exception as e:
                     st.error(f"Error: {e}")
             
-            # Delete User
             st.divider()
             del_uid = st.text_input("Delete User ID")
             if st.button("Delete User"):
