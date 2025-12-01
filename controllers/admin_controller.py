@@ -66,23 +66,68 @@ class AdminController:
     def create_course(self, course_id, course_name):
         self._check_admin()
         return self.course_model.create(course_id, course_name)
+    
+    def get_all_courses(self):
+        self._check_admin()
+        return self.course_model.find_all()
+    
+    def update_course(self, course_id, new_name):
+        self._check_admin()
+        return self.course_model.update(course_id, new_name)
+    
+    def delete_course(self, course_id):
+        self._check_admin()
+        return self.course_model.delete(course_id)
 
     def create_module(self, mod_id, mod_name, course_id, welfare_id, module_id):
         self._check_admin()
         return self.module_model.create(mod_id, mod_name, course_id, welfare_id, module_id)
-
-    # --- Universal Access ---
-    # Admin can use methods from other controllers or access models directly.
-    # Since Admin has full access, we can expose generic CRUD wrappers or specific logic.
-    # For simplicity, we'll expose direct model access via specific methods if needed, 
-    # but usually Admin uses the UI to perform specific actions that map to these models.
     
-    # Example: Admin overriding a grade
+    def get_all_modules(self):
+        self._check_admin()
+        return self.module_model.find_all()
+    
+    def get_modules_by_course(self, course_id):
+        self._check_admin()
+        return self.module_model.find_by_course(course_id)
+    
+    def update_module(self, mod_id, column, new_value):
+        self._check_admin()
+        return self.module_model.update(mod_id, column, new_value)
+    
+    def delete_module(self, mod_id):
+        self._check_admin()
+        return self.module_model.delete(mod_id)
+    
+    def get_courses_with_modules(self):
+        self._check_admin()
+        courses = self.course_model.find_all()
+        result = []
+        for course in courses:
+            course_id, course_name = course
+            modules = self.module_model.find_by_course(course_id)
+            if modules:
+                for module in modules:
+                    mod_id, mod_name = module[0], module[1]
+                    result.append({
+                        'course_id': course_id,
+                        'course_name': course_name,
+                        'mod_id': mod_id,
+                        'mod_name': mod_name
+                    })
+            else:
+                result.append({
+                    'course_id': course_id,
+                    'course_name': course_name,
+                    'mod_id': None,
+                    'mod_name': None
+                })
+        return result
+
     def override_grade(self, stud_id, mod_id, new_grade):
         self._check_admin()
         return self.grade_model.update(stud_id, mod_id, new_grade)
         
-    # Example: Admin deleting a survey (moderation)
     def delete_survey(self, week_no, stud_id, mod_id):
         self._check_admin()
         return self.survey_model.delete(week_no, stud_id, mod_id)

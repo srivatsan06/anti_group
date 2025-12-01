@@ -33,16 +33,7 @@ def login():
         if st.button("Login"):
             auth = AuthController()
             if auth.login(user_id, password):
-                # Get user details to store in session
-                # We need a way to get role/name after login if auth.login only returns True
-                # AuthController.login returns True/False. 
-                # We should probably update AuthController to return user info or fetch it here.
-                # For now, let's fetch it using a direct model call or update AuthController.
-                # Actually, AuthController verifies password. We can fetch user details from UserModel.
-                
-                # Re-instantiate to get user details (or use a helper)
-                # Let's just use the user_id provided since login succeeded
-                # We need the role.
+
                 from models.user import UserModel
                 from utils.db_connection import get_connection
                 conn, cursor = get_connection()
@@ -63,7 +54,6 @@ def logout():
     st.session_state.role = None
     st.rerun()
 
-# --- Dashboards ---
 
 def student_dashboard():
     st.sidebar.title(f"Welcome, {st.session_state.user_name}")
@@ -73,7 +63,7 @@ def student_dashboard():
 
     controller = StudentController(st.session_state.user_id, 'student')
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Profile", "My Modules", "Attendance", "Grades", "Deadlines"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([" Profile", "My Modules", "Attendance", "Grades", "Deadlines", "Surveys"])
     
     with tab1:
         st.header("My Profile")
@@ -121,8 +111,7 @@ def student_dashboard():
         st.header("Upcoming Deadlines")
         deadlines = controller.get_my_deadlines()
         if deadlines:
-            # Filter for upcoming
-            upcoming = [d for d in deadlines if d[5] == 0] # submitted = 0
+            upcoming = [d for d in deadlines if d[5] == 0]
             if upcoming:
                 df = pd.DataFrame(upcoming, columns=['Stud ID', 'Mod ID', 'Week', 'Assignment', 'Due Date', 'Submitted'])
                 st.dataframe(df[['Mod ID', 'Assignment', 'Due Date', 'Week']])
@@ -130,6 +119,38 @@ def student_dashboard():
                 st.success("No pending deadlines!")
         else:
             st.info("No deadlines found.")
+    
+    with tab6:
+        st.header("Wellbeing Surveys")
+        
+        st.subheader("Submit Survey")
+        modules = controller.get_my_modules()
+        if modules:
+            with st.form("survey_form"):
+                survey_mod = st.selectbox("Module", [m[0] for m in modules], format_func=lambda x: f"{x} - {[m[1] for m in modules if m[0] == x][0]}")
+                week_no = st.number_input("Week Number", min_value=1, max_value=12, value=1)
+                stress = st.slider("Stress Level (1-5)", 1, 5, 3)
+                sleep = st.number_input("Hours Slept", min_value=0.0, max_value=24.0, value=7.0, step=0.5)
+                comments = st.text_area("Comments (optional)")
+                
+                if st.form_submit_button("Submit Survey"):
+                    try:
+                        controller.submit_survey(survey_mod, stress, sleep, week_no, comments if comments else 'NO COMMENTS')
+                        st.success("Survey submitted successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        else:
+            st.warning("No modules found. Please enroll in a module first.")
+        
+        st.divider()
+        st.subheader("My Survey History")
+        surveys = controller.get_my_surveys()
+        if surveys:
+            survey_df = pd.DataFrame(surveys, columns=['Week', 'Student', 'Module', 'Stress', 'Sleep', 'Comments', 'Date'])
+            st.dataframe(survey_df[['Week', 'Module', 'Stress', 'Sleep', 'Date', 'Comments']])
+        else:
+            st.info("No surveys submitted yet.")
 
 def module_staff_dashboard():
     st.sidebar.title(f"Staff: {st.session_state.user_name}")
@@ -138,7 +159,6 @@ def module_staff_dashboard():
 
     controller = ModuleStaffController(st.session_state.user_id, 'module_staff')
     
-    # Sidebar Module Selection
     my_modules = controller.get_my_modules()
     if not my_modules:
         st.warning("No modules assigned.")
@@ -155,7 +175,6 @@ def module_staff_dashboard():
         st.subheader("Enrolled Students")
         students = controller.get_module_students(selected_mod_id)
         if students:
-            # students list of tuples: (stud_id, name, email, year, course)
             df = pd.DataFrame(students, columns=['ID', 'Name', 'Email', 'Year', 'Course'])
             st.dataframe(df)
         else:
@@ -190,7 +209,6 @@ def module_staff_dashboard():
             
         if st.button("Submit Grade"):
             try:
-                # Try update first, then add
                 try:
                     controller.update_grade(stud_id_grade, selected_mod_id, grade_val)
                     st.success("Grade updated!")
@@ -221,7 +239,6 @@ def module_staff_dashboard():
             if selected_student:
                 st.write(f"### {selected_student}")
                 
-                # Grade
                 st.write("**Grade:**")
                 grade_result = controller.get_student_grades_in_module(selected_mod_id, selected_student)
                 if grade_result:
@@ -229,7 +246,6 @@ def module_staff_dashboard():
                 else:
                     st.info("No grade recorded yet.")
                 
-                # Attendance
                 st.write("**Attendance:**")
                 week_filter = st.selectbox("Filter by Week (0 = All)", [0] + list(range(1, 13)))
                 
@@ -286,8 +302,7 @@ def welfare_staff_dashboard():
                 st.subheader("Survey History")
                 surveys = controller.get_student_surveys(stud_id_search)
                 if surveys:
-                    # surveys: (week, stud, mod, stress, sleep, comment, date)
-                    # Create clean dataframe
+
                     survey_data = []
                     for surv in surveys:
                         survey_data.append({
@@ -325,18 +340,15 @@ def welfare_staff_dashboard():
     with tab4:
         st.subheader("Survey Analytics")
         
-        # Overall stats
         analytics = controller.get_survey_analytics()
         c1, c2 = st.columns(2)
         c1.metric("Avg Stress Level", analytics['average_stress'])
         c2.metric("Avg Sleep Hours", analytics['average_sleep'])
         
-        # Detailed surveys
         st.divider()
         st.write("**All Survey Responses:**")
         all_surveys = controller.get_survey_details()
         if all_surveys:
-            # (week, stud, mod, stress, sleep, comment, date)
             survey_df = pd.DataFrame(all_surveys, columns=['Week', 'Student', 'Module', 'Stress', 'Sleep', 'Comment', 'Date'])
             st.dataframe(survey_df)
         else:
@@ -351,7 +363,7 @@ def admin_dashboard():
     
     st.title("System Administration")
     
-    tab1, tab2 = st.tabs(["User Management", "System Overview"])
+    tab1, tab2, tab3 = st.tabs(["User Management","Course Management", "System Overview"])
     
     with tab1:
         st.subheader("Register New User")
@@ -376,7 +388,6 @@ def admin_dashboard():
             df = pd.DataFrame(users, columns=['User ID', 'Name', 'Role', 'Email', 'Password Hash'])
             st.dataframe(df[['User ID', 'Name', 'Role', 'Email']])
             
-            # Update User
             st.divider()
             st.subheader("Update User")
             update_uid = st.text_input("User ID to Update")
@@ -390,18 +401,121 @@ def admin_dashboard():
                 except Exception as e:
                     st.error(f"Error: {e}")
             
-            # Delete User
+        st.divider()
+        
+        del_uid = st.text_input("Delete User ID")
+        if st.button("Delete User"):
+            try:
+                controller.delete_user(del_uid)
+                st.success(f"User {del_uid} deleted.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+    with tab2:
+        st.subheader("Course & Module Management")
+        
+        courses_with_modules = controller.get_courses_with_modules()
+        if courses_with_modules:
+            df = pd.DataFrame(courses_with_modules)
+            st.dataframe(df[['course_id', 'course_name', 'mod_id', 'mod_name']])
+        else:
+            st.info("No courses found.")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
             st.divider()
-            del_uid = st.text_input("Delete User ID")
-            if st.button("Delete User"):
+            st.subheader("Add New Course")
+            new_course_id = st.text_input("Course ID", key="new_course_id")
+            new_course_name = st.text_input("Course Name", key="new_course_name")
+            
+            if st.button("Add Course"):
                 try:
-                    controller.delete_user(del_uid)
-                    st.success(f"User {del_uid} deleted.")
+                    controller.create_course(new_course_id, new_course_name)
+                    st.success(f"Course {new_course_id} added!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Update Course")
+            upd_course_id = st.text_input("Course ID to Update", key="upd_course_id")
+            upd_course_name = st.text_input("New Course Name", key="upd_course_name")
+            
+            if st.button("Update Course"):
+                try:
+                    controller.update_course(upd_course_id, upd_course_name)
+                    st.success(f"Course {upd_course_id} updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Delete Course")
+            del_course_id = st.text_input("Course ID to Delete", key="del_course_id")
+            
+            if st.button("Delete Course"):
+                try:
+                    controller.delete_course(del_course_id)
+                    st.success(f"Course {del_course_id} deleted!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        
+        with col2:
+            st.divider()
+            st.subheader("Add New Module")
+            from models.user import UserModel
+            from utils.db_connection import get_connection
+            conn, cursor = get_connection()
+            user_model = UserModel(conn, cursor)
+            
+            welfare_staff = user_model.find_by_role('welfare_staff')
+            module_staff = user_model.find_by_role('module_staff')
+            all_courses = controller.get_all_courses()
+            
+            new_mod_id = st.text_input("Module ID", key="new_mod_id")
+            new_mod_name = st.text_input("Module Name", key="new_mod_name")
+            new_mod_course = st.selectbox("Course", [c[0] for c in all_courses] if all_courses else [], format_func=lambda x: f"{x} - {[c[1] for c in all_courses if c[0] == x][0]}", key="new_mod_course")
+            new_mod_welfare = st.selectbox("Welfare Staff", [w[0] for w in welfare_staff] if welfare_staff else [], format_func=lambda x: f"{x} - {[w[1] for w in welfare_staff if w[0] == x][0]}", key="new_mod_welfare")
+            new_mod_module_staff = st.selectbox("Module Staff", [m[0] for m in module_staff] if module_staff else [], format_func=lambda x: f"{x} - {[m[1] for m in module_staff if m[0] == x][0]}", key="new_mod_module_staff")
+            
+            if st.button("Add Module"):
+                try:
+                    controller.create_module(new_mod_id, new_mod_name, new_mod_course, new_mod_welfare, new_mod_module_staff)
+                    st.success(f"Module {new_mod_id} added!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Update Module")
+            upd_mod_id = st.text_input("Module ID to Update", key="upd_mod_id")
+            upd_mod_field = st.selectbox("Field to Update", ["mod_name"], key="upd_mod_field")
+            upd_mod_value = st.text_input("New Value", key="upd_mod_value")
+            
+            if st.button("Update Module"):
+                try:
+                    controller.update_module(upd_mod_id, upd_mod_field, upd_mod_value)
+                    st.success(f"Module {upd_mod_id} updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
+            st.divider()
+            st.subheader("Delete Module")
+            del_mod_id = st.text_input("Module ID to Delete", key="del_mod_id")
+            
+            if st.button("Delete Module"):
+                try:
+                    controller.delete_module(del_mod_id)
+                    st.success(f"Module {del_mod_id} deleted!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-    with tab2:
+    with tab3:
         st.subheader("System Stats")
         st.metric("Total Users", len(users) if users else 0)
 
