@@ -1,4 +1,3 @@
-# This file makes the models directory a Python package
 from .base_model import BaseModel
 from .user import UserModel
 from .student import StudentModel
@@ -8,7 +7,6 @@ from .attendance import AttendanceModel
 from .survey import SurveyModel
 from .deadline import DeadlineModel
 from .grade import GradeModel
-
 __all__ = [
     'BaseModel',
     'UserModel',
@@ -20,4 +18,3 @@ __all__ = [
     'DeadlineModel',
     'GradeModel'
 ]
-
