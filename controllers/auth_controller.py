@@ -6,6 +6,8 @@ from models.user import UserModel
 from utils.db_connection import get_connection
 
 
+import bcrypt
+
 class AuthController:
     """
     Controller for authentication and authorization logic.
@@ -34,26 +36,34 @@ class AuthController:
         self.user_model = UserModel(conn, cursor)
         self._current_user = None
     
-    def login(self, user_id, hash_pass):
+    def login(self, user_id, password):
         """
         Authenticate a user and set as current user.
         
         Args:
             user_id (str): User ID
-            hash_pass (str): Hashed password
+            password (str): Plain text password
             
         Returns:
             dict: User info if login succeeds, None otherwise
         """
-        user = self.user_model.authenticate(user_id, hash_pass)
+        # Get user by ID to retrieve the stored hash
+        user = self.user_model.find_by_id(user_id)
+        
         if user:
-            self._current_user = {
-                'user_id': user[0],
-                'user_name': user[1],
-                'role': user[2],
-                'email': user[3]
-            }
-            return self._current_user
+            # user tuple: (user_id, user_name, role, email, hash_pass)
+            stored_hash = user[4]
+            
+            # Verify password
+            if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+                self._current_user = {
+                    'user_id': user[0],
+                    'user_name': user[1],
+                    'role': user[2],
+                    'email': user[3]
+                }
+                return self._current_user
+                
         return None
     
     def logout(self):

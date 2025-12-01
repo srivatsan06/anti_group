@@ -56,6 +56,11 @@ class AdminController:
         self._check_admin()
         return self.user_model.delete(user_id)
 
+    def update_user(self, user_id, column, new_value):
+        """Update user details."""
+        self._check_admin()
+        return self.user_model.update(user_id, column, new_value)
+
     # --- Course & Module Management ---
 
     def create_course(self, course_id, course_name):

@@ -33,6 +33,11 @@ class SurveyModel(BaseModel):
         query = "SELECT * FROM surveys WHERE stud_id = %s AND mod_id = %s ORDER BY date DESC"
         return self.execute_query(query, (stud_id, mod_id))
     
+    def find_all(self):
+        """Get all surveys."""
+        query = "SELECT * FROM surveys ORDER BY date DESC"
+        return self.execute_query(query)
+    
     def get_average_stress(self, stud_id=None, mod_id=None):
         """Get average stress level."""
         if stud_id and mod_id:

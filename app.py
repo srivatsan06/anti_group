@@ -149,7 +149,7 @@ def module_staff_dashboard():
     
     st.title(f"Manage {selected_mod_id}")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Class List", "Attendance", "Grades", "Analytics"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Class List", "Attendance", "Grades", "Analytics", "Student Details"])
     
     with tab1:
         st.subheader("Enrolled Students")
@@ -211,6 +211,42 @@ def module_staff_dashboard():
             
             st.image(analytics['chart_path'], caption="Performance Overview")
 
+    with tab5:
+        st.subheader("Individual Student Details")
+        students = controller.get_module_students(selected_mod_id)
+        if students:
+            student_ids = [s[0] for s in students]
+            selected_student = st.selectbox("Select Student", student_ids, format_func=lambda x: f"{x} - {[s[1] for s in students if s[0] == x][0]}")
+            
+            if selected_student:
+                st.write(f"### {selected_student}")
+                
+                # Grade
+                st.write("**Grade:**")
+                grade_result = controller.get_student_grades_in_module(selected_mod_id, selected_student)
+                if grade_result:
+                    st.metric("Grade", grade_result[0][2])
+                else:
+                    st.info("No grade recorded yet.")
+                
+                # Attendance
+                st.write("**Attendance:**")
+                week_filter = st.selectbox("Filter by Week (0 = All)", [0] + list(range(1, 13)))
+                
+                if week_filter == 0:
+                    att_result = controller.get_student_attendance_in_module(selected_mod_id, selected_student)
+                else:
+                    att_result = controller.get_student_attendance_in_module(selected_mod_id, selected_student, week_filter)
+                
+                if att_result:
+                    att_df = pd.DataFrame(att_result, columns=['Week', 'Date', 'Missed'])
+                    att_df['Status'] = att_df['Missed'].apply(lambda x: 'Absent' if x else 'Present')
+                    st.dataframe(att_df[['Week', 'Date', 'Status']])
+                else:
+                    st.info("No attendance records.")
+        else:
+            st.info("No students enrolled.")
+
 def welfare_staff_dashboard():
     st.sidebar.title(f"Welfare: {st.session_state.user_name}")
     if st.sidebar.button("Logout"):
@@ -220,7 +256,7 @@ def welfare_staff_dashboard():
     
     st.title("Student Welfare Monitoring")
     
-    tab1, tab2, tab3 = st.tabs(["At-Risk Monitor", "Student Search", "Wellbeing Stats"])
+    tab1, tab2, tab3, tab4 = st.tabs(["At-Risk Monitor", "Student Search", "Module Analytics", "Survey Details"])
     
     with tab1:
         st.subheader("⚠️ At-Risk Students")
@@ -268,11 +304,43 @@ def welfare_staff_dashboard():
                 st.error(f"Could not find student or data: {e}")
 
     with tab3:
-        st.subheader("Overall Wellbeing")
+        st.subheader("Module Performance Analytics")
+        from models.module import ModuleModel
+        from utils.db_connection import get_connection
+        conn, cursor = get_connection()
+        mod_model = ModuleModel(conn, cursor)
+        all_modules = mod_model.find_all()
+        
+        if all_modules:
+            mod_ids = [m[0] for m in all_modules]
+            selected_mod = st.selectbox("Select Module", mod_ids, format_func=lambda x: f"{x} - {[m[1] for m in all_modules if m[0] == x][0]}")
+            
+            if st.button("Generate Module Report"):
+                analytics = controller.get_module_analytics(selected_mod)
+                c1, c2 = st.columns(2)
+                c1.metric("Avg Attendance", f"{analytics['avg_attendance']:.1f}%")
+                c2.metric("Avg Grade", f"{analytics['avg_grade']:.1f}")
+                st.image(analytics['chart_path'], caption="Module Performance")
+
+    with tab4:
+        st.subheader("Survey Analytics")
+        
+        # Overall stats
         analytics = controller.get_survey_analytics()
         c1, c2 = st.columns(2)
         c1.metric("Avg Stress Level", analytics['average_stress'])
         c2.metric("Avg Sleep Hours", analytics['average_sleep'])
+        
+        # Detailed surveys
+        st.divider()
+        st.write("**All Survey Responses:**")
+        all_surveys = controller.get_survey_details()
+        if all_surveys:
+            # (week, stud, mod, stress, sleep, comment, date)
+            survey_df = pd.DataFrame(all_surveys, columns=['Week', 'Student', 'Module', 'Stress', 'Sleep', 'Comment', 'Date'])
+            st.dataframe(survey_df)
+        else:
+            st.info("No surveys submitted yet.")
 
 def admin_dashboard():
     st.sidebar.title(f"Admin: {st.session_state.user_name}")
@@ -308,7 +376,22 @@ def admin_dashboard():
             df = pd.DataFrame(users, columns=['User ID', 'Name', 'Role', 'Email', 'Password Hash'])
             st.dataframe(df[['User ID', 'Name', 'Role', 'Email']])
             
+            # Update User
+            st.divider()
+            st.subheader("Update User")
+            update_uid = st.text_input("User ID to Update")
+            update_col = st.selectbox("Field to Update", ["user_name", "role", "email"])
+            update_val = st.text_input("New Value")
+            if st.button("Update User"):
+                try:
+                    controller.update_user(update_uid, update_col, update_val)
+                    st.success(f"User {update_uid} updated.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            
             # Delete User
+            st.divider()
             del_uid = st.text_input("Delete User ID")
             if st.button("Delete User"):
                 try:
