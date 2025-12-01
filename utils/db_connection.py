@@ -1,8 +1,17 @@
 """
 Database connection utility module.
 Refactored from build_connection.py for better organization.
+Supports both local development and Streamlit Cloud deployment.
 """
 import mysql.connector
+import os
+
+# Try to import streamlit for secrets management
+try:
+    import streamlit as st
+    HAS_STREAMLIT = True
+except ImportError:
+    HAS_STREAMLIT = False
 
 
 class DBConnection:
@@ -23,12 +32,24 @@ class DBConnection:
             Exception: If connection fails
         """
         try:
-            self._conn = mysql.connector.connect(
-                host="localhost",       
-                database="APP",        
-                user="warlord",            
-                password="Warlord@200206"  
-            )
+            # Try to get config from Streamlit secrets (Cloud deployment)
+            if HAS_STREAMLIT and hasattr(st, 'secrets') and 'mysql' in st.secrets:
+                config = {
+                    'host': st.secrets['mysql']['host'],
+                    'database': st.secrets['mysql']['database'],
+                    'user': st.secrets['mysql']['user'],
+                    'password': st.secrets['mysql']['password']
+                }
+            # Fallback to hardcoded values (Local development)
+            else:
+                config = {
+                    'host': 'localhost',
+                    'database': 'APP',
+                    'user': 'warlord',
+                    'password': 'Warlord@200206'
+                }
+            
+            self._conn = mysql.connector.connect(**config)
             self._cursor = self._conn.cursor(buffered=True)
             print("Connection Successfully made!!")
             return self._conn, self._cursor
