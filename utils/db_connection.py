@@ -20,11 +20,10 @@ class DBConnection:
                 }
             else:
                 config = {
-                    'host': 'sql8.freesqldatabase.com',
-                    'database': 'sql8810071',
-                    'user': 'sql8810071',
-                    'password': 'QTS5mGlaDF',
-                    'port': 3306
+                    'host': 'localhost',
+                    'database': 'APP',
+                    'user': 'warlord',
+                    'password': 'Warlord@200206'
                 }
             self._conn = mysql.connector.connect(**config)
             self._cursor = self._conn.cursor(buffered=True)

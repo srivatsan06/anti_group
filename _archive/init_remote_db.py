@@ -14,7 +14,6 @@ DB_CONFIG = {
 }
 
 def init_remote_db():
-    """Initialize the remote database."""
     try:
         print("Connecting to remote database...")
         
@@ -29,18 +28,15 @@ def init_remote_db():
         cursor = conn.cursor(buffered=True)
         print("✓ Connected successfully!")
         
-        # Create tables using Definition_new logic
         print("\nCreating tables...")
         exec(open('Definition_new.py').read())
         
         print("✓ Tables should be created!")
         
-        # Now run seed_data but we need to modify it to use our connection
         print("\nSeeding data...")
         print("⚠ Running modified seed script...")
         
-        # We'll need to manually run the seeding since seed_data uses BuildConnection
-        # Let's import and run it
+
         exec(open('seed_data.py').read().replace('from build_connection import BuildConnection', '').replace('db = BuildConnection()', '').replace('conn, cursor = db.make_connection()', ''))
         
         print("✓ Data seeded!")
